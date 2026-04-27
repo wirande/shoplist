@@ -1,0 +1,24 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.iml
+*.log
+
+# Android
+android/.gradle/
+android/local.properties
+android/app/debug
+android/app/profile
+android/app/release
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.user
+
+# Artifacts de shell (diretórios com nome inválido)
+{lib
