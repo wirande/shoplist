@@ -1,0 +1,28 @@
+<!-- Adicionar dentro de <application> no AndroidManifest.xml -->
+
+<!-- Widget Provider -->
+<receiver
+    android:name=".ShopListWidget"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+        <action android:name="TOGGLE_ITEM"/>
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/shop_list_widget_info"/>
+</receiver>
+
+<!-- Widget List Service -->
+<service
+    android:name=".ShopListWidgetService"
+    android:exported="false"
+    android:permission="android.permission.BIND_REMOTEVIEWS"/>
+
+<!-- Deep link para toggle via widget -->
+<!-- Adicionar dentro da <activity android:name=".MainActivity"> existente: -->
+<intent-filter>
+    <action android:name="android.intent.action.VIEW"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <data android:scheme="shoplist"/>
+</intent-filter>
