@@ -27,7 +27,6 @@ jobs:
       - name: Generate Android boilerplate
         run: |
           flutter create --platforms=android /tmp/shoplist_boilerplate
-
           cp /tmp/shoplist_boilerplate/android/build.gradle android/
           cp /tmp/shoplist_boilerplate/android/settings.gradle android/
           cp /tmp/shoplist_boilerplate/android/gradle.properties android/
@@ -38,89 +37,22 @@ jobs:
 
       - name: Fix package name and create MainActivity
         run: |
-          ORIG="com.example.shoplist_boilerplate"
-          PKG="com.shoplist.app"
-
-          sed -i "s/$ORIG/$PKG/g" android/app/build.gradle
-          sed -i "s/$ORIG/$PKG/g" android/app/src/main/AndroidManifest.xml
-
+          sed -i 's/com\.example\.shoplist_boilerplate/com.shoplist.app/g' android/app/build.gradle
+          sed -i 's/com\.example\.shoplist_boilerplate/com.shoplist.app/g' android/app/src/main/AndroidManifest.xml
           mkdir -p android/app/src/main/kotlin/com/shoplist/app
-          printf 'package com.shoplist.app\nimport io.flutter.embedding.android.FlutterActivity\nclass MainActivity: FlutterActivity()\n' \
-            > android/app/src/main/kotlin/com/shoplist/app/MainActivity.kt
+          printf 'package com.shoplist.app\nimport io.flutter.embedding.android.FlutterActivity\nclass MainActivity: FlutterActivity()\n' > android/app/src/main/kotlin/com/shoplist/app/MainActivity.kt
 
-      - name: Patch AndroidManifest with widget entries
+      - name: Patch AndroidManifest with widget and deeplink
         run: |
-          python3 - << 'PYEOF'
-with open('android/app/src/main/AndroidManifest.xml', 'r') as f:
-    content = f.read()
-
-deeplink = """
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <data android:scheme="shoplist"/>
-            </intent-filter>"""
-
-widget = """
-        <receiver
-            android:name=".ShopListWidget"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
-                <action android:name="TOGGLE_ITEM"/>
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/shop_list_widget_info"/>
-        </receiver>
-        <service
-            android:name=".ShopListWidgetService"
-            android:exported="false"
-            android:permission="android.permission.BIND_REMOTEVIEWS"/>"""
-
-content = content.replace('</activity>', deeplink + '\n        </activity>', 1)
-content = content.replace('</application>', widget + '\n    </application>')
-
-with open('android/app/src/main/AndroidManifest.xml', 'w') as f:
-    f.write(content)
-print("Manifest patched")
-PYEOF
+          sed -i 's|</activity>|<intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><data android:scheme="shoplist"/></intent-filter></activity>|' android/app/src/main/AndroidManifest.xml
+          sed -i 's|</application>|<receiver android:name=".ShopListWidget" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="TOGGLE_ITEM"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/shop_list_widget_info"/></receiver><service android:name=".ShopListWidgetService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS"/></application>|' android/app/src/main/AndroidManifest.xml
 
       - name: Add missing resources
         run: |
-          grep -q "widget_description" android/app/src/main/res/values/strings.xml || \
-            sed -i 's|</resources>|    <string name="widget_description">Lista de compras interativa</string>\n</resources>|' \
-              android/app/src/main/res/values/strings.xml
-
-          cat > android/app/src/main/res/drawable/ic_check_empty.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-    <stroke android:width="2dp" android:color="#CCCCCC"/>
-    <size android:width="22dp" android:height="22dp"/>
-</shape>
-EOF
-
-          cat > android/app/src/main/res/drawable/ic_check_filled.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <shape android:shape="oval">
-            <solid android:color="#2D6A4F"/>
-            <size android:width="22dp" android:height="22dp"/>
-        </shape>
-    </item>
-    <item android:drawable="@android:drawable/checkbox_on_background"/>
-</layer-list>
-EOF
-
-          cat > android/app/src/main/res/drawable/count_badge.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#E8F5E9"/>
-    <corners android:radius="12dp"/>
-    <stroke android:width="1dp" android:color="#2D6A4F"/>
-</shape>
-EOF
+          grep -q "widget_description" android/app/src/main/res/values/strings.xml || sed -i 's|</resources>|<string name="widget_description">Lista de compras interativa</string></resources>|' android/app/src/main/res/values/strings.xml
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">\n    <stroke android:width="2dp" android:color="#CCCCCC"/>\n    <size android:width="22dp" android:height="22dp"/>\n</shape>\n' > android/app/src/main/res/drawable/ic_check_empty.xml
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<layer-list xmlns:android="http://schemas.android.com/apk/res/android">\n    <item><shape android:shape="oval"><solid android:color="#2D6A4F"/><size android:width="22dp" android:height="22dp"/></shape></item>\n    <item android:drawable="@android:drawable/checkbox_on_background"/>\n</layer-list>\n' > android/app/src/main/res/drawable/ic_check_filled.xml
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">\n    <solid android:color="#E8F5E9"/>\n    <corners android:radius="12dp"/>\n    <stroke android:width="1dp" android:color="#2D6A4F"/>\n</shape>\n' > android/app/src/main/res/drawable/count_badge.xml
 
       - run: flutter build apk --release
 
