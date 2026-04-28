@@ -40,6 +40,7 @@ jobs:
         run: |
           sed -i 's/com\.example\.shoplist_boilerplate/com.shoplist.app/g' android/app/build.gradle
           sed -i 's/com\.example\.shoplist_boilerplate/com.shoplist.app/g' android/app/src/main/AndroidManifest.xml
+          sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.23'/" android/build.gradle
           mkdir -p android/app/src/main/kotlin/com/shoplist/app
           printf 'package com.shoplist.app\nimport io.flutter.embedding.android.FlutterActivity\nclass MainActivity: FlutterActivity()\n' > android/app/src/main/kotlin/com/shoplist/app/MainActivity.kt
 
