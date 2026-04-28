@@ -19,18 +19,20 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.6'
+          flutter-version: '3.24.3'
           channel: stable
 
       - name: Generate Android boilerplate
         run: |
           flutter create --platforms=android /tmp/shoplist_boilerplate
-          cp /tmp/shoplist_boilerplate/android/build.gradle android/
-          cp /tmp/shoplist_boilerplate/android/settings.gradle android/
-          cp /tmp/shoplist_boilerplate/android/gradle.properties android/
           cp -r /tmp/shoplist_boilerplate/android/gradle android/
-          cp /tmp/shoplist_boilerplate/android/app/build.gradle android/app/
-          cp /tmp/shoplist_boilerplate/android/app/src/main/AndroidManifest.xml android/app/src/main/
+          cp /tmp/shoplist_boilerplate/android/gradle.properties android/
+          cp /tmp/shoplist_boilerplate/android/settings.gradle android/ 2>/dev/null || true
+          cp /tmp/shoplist_boilerplate/android/settings.gradle.kts android/ 2>/dev/null || true
+          cp /tmp/shoplist_boilerplate/android/build.gradle android/ 2>/dev/null || true
+          cp /tmp/shoplist_boilerplate/android/build.gradle.kts android/ 2>/dev/null || true
+          cp /tmp/shoplist_boilerplate/android/app/build.gradle android/app/ 2>/dev/null || true
+          cp /tmp/shoplist_boilerplate/android/app/build.gradle.kts android/app/ 2>/dev/null || true
           for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi mipmap-anydpi-v26; do
             [ -d "/tmp/shoplist_boilerplate/android/app/src/main/res/$dir" ] && \
               cp -r "/tmp/shoplist_boilerplate/android/app/src/main/res/$dir" android/app/src/main/res/ || true
@@ -38,18 +40,36 @@ jobs:
 
       - name: Fix package name and create MainActivity
         run: |
-          sed -i 's/com\.example\.shoplist_boilerplate/com.shoplist.app/g' android/app/build.gradle
-          sed -i 's/com\.example\.shoplist_boilerplate/com.shoplist.app/g' android/app/src/main/AndroidManifest.xml
-          sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.23'/" android/build.gradle
+          find android -name "*.gradle" -o -name "*.gradle.kts" | xargs sed -i 's/com\.example\.shoplist_boilerplate/com.shoplist.app/g' 2>/dev/null || true
           mkdir -p android/app/src/main/kotlin/com/shoplist/app
           printf 'package com.shoplist.app\nimport io.flutter.embedding.android.FlutterActivity\nclass MainActivity: FlutterActivity()\n' > android/app/src/main/kotlin/com/shoplist/app/MainActivity.kt
 
-      - name: Patch AndroidManifest with widget and deeplink
+      - name: Write AndroidManifest
         run: |
-          sed -i 's|</activity>|<intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><data android:scheme="shoplist"/></intent-filter></activity>|' android/app/src/main/AndroidManifest.xml
-          sed -i 's|</application>|<receiver android:name=".ShopListWidget" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="TOGGLE_ITEM"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/shop_list_widget_info"/></receiver><service android:name=".ShopListWidgetService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS"/></application>|' android/app/src/main/AndroidManifest.xml
+          python3 - << 'PYEOF'
+          lines = [
+              '<?xml version="1.0" encoding="utf-8"?>',
+              '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
+              '    <application android:label="ShopList" android:name="${applicationName}" android:icon="@mipmap/ic_launcher">',
+              '        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:taskAffinity="" android:theme="@style/LaunchTheme" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:windowSoftInputMode="adjustResize">',
+              '            <meta-data android:name="io.flutter.embedding.android.NormalTheme" android:resource="@style/NormalTheme"/>',
+              '            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>',
+              '            <intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><data android:scheme="shoplist"/></intent-filter>',
+              '        </activity>',
+              '        <meta-data android:name="flutterEmbedding" android:value="2"/>',
+              '        <receiver android:name=".ShopListWidget" android:exported="true">',
+              '            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="TOGGLE_ITEM"/></intent-filter>',
+              '            <meta-data android:name="android.appwidget.provider" android:resource="@xml/shop_list_widget_info"/>',
+              '        </receiver>',
+              '        <service android:name=".ShopListWidgetService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS"/>',
+              '    </application>',
+              '</manifest>',
+          ]
+          with open('android/app/src/main/AndroidManifest.xml', 'w') as f:
+              f.write('\n'.join(lines) + '\n')
+          PYEOF
 
-      - name: Create required resource files
+      - name: Create resource files
         run: |
           mkdir -p android/app/src/main/res/values
           printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name">ShopList</string>\n    <string name="widget_description">Lista de compras interativa</string>\n</resources>\n' > android/app/src/main/res/values/strings.xml
