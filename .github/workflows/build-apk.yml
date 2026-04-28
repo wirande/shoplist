@@ -45,11 +45,8 @@ jobs:
           sed -i "s/$ORIG/$PKG/g" android/app/src/main/AndroidManifest.xml
 
           mkdir -p android/app/src/main/kotlin/com/shoplist/app
-          cat > android/app/src/main/kotlin/com/shoplist/app/MainActivity.kt << 'EOF'
-package com.shoplist.app
-import io.flutter.embedding.android.FlutterActivity
-class MainActivity: FlutterActivity()
-EOF
+          printf 'package com.shoplist.app\nimport io.flutter.embedding.android.FlutterActivity\nclass MainActivity: FlutterActivity()\n' \
+            > android/app/src/main/kotlin/com/shoplist/app/MainActivity.kt
 
       - name: Patch AndroidManifest with widget entries
         run: |
