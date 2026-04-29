@@ -41,21 +41,29 @@ class _WidgetCallbackHandler extends StatefulWidget {
   State<_WidgetCallbackHandler> createState() => _WidgetCallbackHandlerState();
 }
 
-class _WidgetCallbackHandlerState extends State<_WidgetCallbackHandler> {
+class _WidgetCallbackHandlerState extends State<_WidgetCallbackHandler>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    // Listen for widget interactions
-    HomeWidget.widgetClicked.listen(_handleWidgetCallback);
+    WidgetsBinding.instance.addObserver(this);
+    _flushPending();
   }
 
-  void _handleWidgetCallback(Uri? uri) {
-    if (uri?.host == 'toggle') {
-      final itemId = uri?.queryParameters['id'];
-      if (itemId != null) {
-        context.read<ShoppingProvider>().toggleItem(itemId);
-      }
-    }
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _flushPending();
+  }
+
+  Future<void> _flushPending() async {
+    if (!mounted) return;
+    await context.read<ShoppingProvider>().flushWidgetPendingToggles();
   }
 
   @override
