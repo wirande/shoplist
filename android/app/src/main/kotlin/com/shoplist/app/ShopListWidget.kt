@@ -75,13 +75,57 @@ class ShopListWidget : AppWidgetProvider() {
         super.onReceive(context, intent)
         if (intent.action == "TOGGLE_ITEM") {
             val itemId = intent.getStringExtra("item_id") ?: return
-            // Launch app with deep link to toggle
-            val deepLink = Intent(context, MainActivity::class.java).apply {
-                action = Intent.ACTION_VIEW
-                data = Uri.parse("shoplist://toggle?id=$itemId")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+
+            // Toggle item directly in SharedPreferences (no app launch)
+            val prefs = HomeWidgetPlugin.getData(context)
+            val listJson = prefs.getString("shopping_list", "[]") ?: "[]"
+
+            val toggled = toggleItemInJson(listJson, itemId)
+
+            val pendingCount = countPending(toggled)
+            prefs.edit()
+                .putString("shopping_list", toggled)
+                .putInt("pending_count", pendingCount)
+                // Queue toggle so Flutter applies it to SQLite on next resume
+                .putString("widget_pending_toggle", itemId)
+                .apply()
+
+            // Refresh widget immediately
+            val manager = AppWidgetManager.getInstance(context)
+            if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                updateWidget(context, manager, appWidgetId)
+            } else {
+                val ids = manager.getAppWidgetIds(
+                    android.content.ComponentName(context, ShopListWidget::class.java)
+                )
+                ids.forEach { updateWidget(context, manager, it) }
             }
-            context.startActivity(deepLink)
         }
+    }
+
+    private fun toggleItemInJson(json: String, itemId: String): String {
+        return try {
+            val arr = org.json.JSONArray(json)
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                if (obj.getString("id") == itemId) {
+                    obj.put("checked", !obj.getBoolean("checked"))
+                    break
+                }
+            }
+            arr.toString()
+        } catch (_: Exception) { json }
+    }
+
+    private fun countPending(json: String): Int {
+        return try {
+            val arr = org.json.JSONArray(json)
+            var count = 0
+            for (i in 0 until arr.length()) {
+                if (!arr.getJSONObject(i).getBoolean("checked")) count++
+            }
+            count
+        } catch (_: Exception) { 0 }
     }
 }
