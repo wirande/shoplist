@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:uuid/uuid.dart';
 import '../models/item.dart';
 import '../services/database_service.dart';
@@ -92,6 +93,13 @@ class ShoppingProvider extends ChangeNotifier {
     _shoppingList = [];
     notifyListeners();
     await WidgetService.syncToWidget(_shoppingList);
+  }
+
+  Future<void> flushWidgetPendingToggles() async {
+    final raw = await HomeWidget.getWidgetData<String>('widget_pending_toggle');
+    if (raw == null || raw.isEmpty) return;
+    await HomeWidget.saveWidgetData<String>('widget_pending_toggle', '');
+    await toggleItem(raw);
   }
 
   bool isInList(String name) =>
